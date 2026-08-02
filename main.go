@@ -41,9 +41,20 @@ func main() {
 			fmt.Println("   exit")
 
 		case "add":
-			notes = append(notes, strings.Join(inputParts[1:], " "))
+			// Explain panic on inputParts[1]
+			if len(inputParts) < 2 {
+				fmt.Println("Usage: add <text>")
+			} else {
+				notes = append(notes, strings.Join(inputParts[1:], " "))
+				fmt.Println("Note added successfully.")
+			}
 
 		case "list":
+			if len(notes) == 0 {
+				fmt.Println("No notes in the list.")
+				continue
+			}
+
 			// fmt.Println(notes)
 			fmt.Println("List of notes:")
 			for index, note := range notes {
