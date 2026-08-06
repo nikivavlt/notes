@@ -11,7 +11,7 @@ import (
 const appName = "Notes"
 
 func main() {
-	// first explain array and why not?
+	// first explain array and why not? arrays length is part of its type
 	notes := []string{}
 
 	scanner := bufio.NewScanner(os.Stdin)
@@ -24,14 +24,23 @@ func main() {
 		fmt.Print("> ")
 
 		// fmt.Scan(&command)
-		scanner.Scan()
+		//scanner.Scan()
+		if !scanner.Scan() { // Scan() returns false when input ends or an error occurs. A safer pattern is:
+			break
+		}
+
 		userInput := scanner.Text()
 		// why not .Split() ?
 		inputParts := strings.Fields(userInput)
 
-		switch inputParts[0] {
-		case "":
+		if len(inputParts) == 0 {
 			continue
+		}
+		
+		// explain why panic possible here
+		switch inputParts[0] {
+		// case "":
+		//	continue
 
 		case "help":
 			fmt.Println("Available commands:")
@@ -58,7 +67,7 @@ func main() {
 			// fmt.Println(notes)
 			fmt.Println("List of notes:")
 			for index, note := range notes {
-				fmt.Printf("%d. %s\n", index, note)
+				fmt.Printf("%d. %s\n", index+1, note)
 			}
 
 		case "exit":
