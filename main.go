@@ -21,6 +21,10 @@ func (n Note) Print() {
 	fmt.Printf("%d. %s\n", n.ID, n.Text)
 }
 
+func (n *Note) Rename(text string) {
+	n.Text = text
+}
+
 func main() {
 	// first explain array and why not? arrays length is part of its type
 	notes := []Note{}
@@ -59,8 +63,10 @@ func main() {
 			fmt.Println("Available commands:")
 			fmt.Println("   help")
 			fmt.Println("   list")
+			fmt.Println("   count")
 			fmt.Println("   add <text>")
 			fmt.Println("   show <id>")
+			fmt.Println("   rename <id> <text>")
 			fmt.Println("   exit")
 
 		case "add":
@@ -68,12 +74,13 @@ func main() {
 			if len(inputParts) < 2 {
 				fmt.Println("Usage: add <text>")
 			} else {
-				notes = append(
-					notes,
-					Note{
-						ID:   globalID,
-						Text: strings.Join(inputParts[1:], " "),
-					})
+
+				note := Note{
+					ID:   globalID,
+					Text: strings.Join(inputParts[1:], " "),
+				}
+
+				notes = append(notes, note)
 
 				globalID += 1
 
@@ -92,17 +99,47 @@ func main() {
 				note.Print()
 			}
 
-		case "show":
+		case "count":
+			// what is d?
+			fmt.Printf("%d note(s) in the list.\n", len(notes))
+
+		case "rename":
+			if len(inputParts) < 3 {
+				fmt.Println("Usage: rename <id> <text>")
+				continue
+			}
+
 			id, err := strconv.Atoi(inputParts[1])
-			if err != nil {
+			if err != nil || id <= 0 {
 				fmt.Println("Invalid note ID.")
 				continue
 			}
 
-			note, found := findNote(id, notes)
+			note, found := findNote(notes, id)
 			if !found {
 				fmt.Println("Note not found.")
-				return
+				continue
+			}
+
+			note.Rename(strings.Join(inputParts[2:], " "))
+			fmt.Println("Note renamed successfully.")
+
+		case "show":
+			if len(inputParts) != 2 {
+				fmt.Println("Usage: show <id>")
+				continue
+			}
+
+			id, err := strconv.Atoi(inputParts[1])
+			if err != nil || id <= 0 {
+				fmt.Println("Invalid note ID.")
+				continue
+			}
+
+			note, found := findNote(notes, id)
+			if !found {
+				fmt.Println("Note not found.")
+				continue
 			}
 
 			note.Print()
@@ -116,14 +153,20 @@ func main() {
 			fmt.Println(`Unknown command. Type "help".`)
 		}
 	}
+
+	if err := scanner.Err(); err != nil {
+		fmt.Println("input error:", err)
+	}
 }
 
-func findNote(id int, notes []Note) (Note, bool){
-	for _, note := range notes {
-		if note.ID == id {
-			return note, true
+// simplify to one return ? without bool?
+func findNote(notes []Note, id int) (*Note, bool) {
+	for index := range notes {
+		if notes[index].ID == id {
+			return &notes[index], true
 		}
 	}
 
-	return Note{}, false
+	// nil or &Note{}
+	return nil, false
 }
