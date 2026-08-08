@@ -11,24 +11,74 @@ import (
 // const appName string = "Notes"
 const appName = "Notes"
 
+type Storage struct {
+	notes []Note
+	nextId int
+}
+
+func NewStorage() *Storage {
+	return &Storage{ nextId: 1 }
+}
+
+func (storage *Storage) Add(text string) {
+	note := Note{
+		ID:   storage.nextId,
+		Text: text,
+	}
+
+	storage.notes = append(storage.notes, note)
+	storage.nextId += 1;
+
+	fmt.Println("Note added successfully.")
+}
+
+func (storage *Storage) Find(id int) (*Note) {
+	for index := range storage.notes {
+		if storage.notes[index].ID == id {
+			return &storage.notes[index]
+		}
+	}
+
+	// nil or &Note{}
+	return nil
+}
+
+func (storage *Storage) Count() int {
+	return len(storage.notes)
+}
+
+func (storage *Storage) List() []Note {
+	notes := make([]Note, len(storage.notes))
+	// why not double? I mean 0, 0, 0 ..., and then notes
+	copy(notes, storage.notes)
+	return notes
+}
+
+func (storage *Storage) Rename(id int, text string) bool {
+		note := storage.Find(id)
+		if note == nil {
+			return false
+		}
+
+		note.Rename(text)
+		return true
+}
+
 type Note struct {
 	ID   int
 	Text string
 }
 
 // A method is a function associated with a type, value receiver /pointer receiver
-func (n Note) Print() {
-	fmt.Printf("%d. %s\n", n.ID, n.Text)
-}
 
 func (n *Note) Rename(text string) {
 	n.Text = text
 }
 
+// keep main small
 func main() {
 	// first explain array and why not? arrays length is part of its type
-	notes := []Note{}
-	globalID := 1
+	storage := NewStorage()
 
 	scanner := bufio.NewScanner(os.Stdin)
 
@@ -55,6 +105,7 @@ func main() {
 		}
 
 		// explain why panic possible here
+		// function handlers split
 		switch inputParts[0] {
 		// case "":
 		//	continue
@@ -70,38 +121,37 @@ func main() {
 			fmt.Println("   exit")
 
 		case "add":
+			// The caller says:
+			// Add this note.
+			// not:
+			// Append this struct into your internal slice and increment this counter.
+			// That distinction becomes more important as complexity grows.
+
 			// Explain panic on inputParts[1]
 			if len(inputParts) < 2 {
 				fmt.Println("Usage: add <text>")
-			} else {
-
-				note := Note{
-					ID:   globalID,
-					Text: strings.Join(inputParts[1:], " "),
-				}
-
-				notes = append(notes, note)
-
-				globalID += 1
-
-				fmt.Println("Note added successfully.")
-			}
-
-		case "list":
-			if len(notes) == 0 {
-				fmt.Println("No notes in the list.")
 				continue
 			}
 
+			storage.Add(strings.Join(inputParts[1:], " "))
+
+		case "list":
+			if storage.Count() == 0 {
+				fmt.Println("No notes in the list.")
+				continue
+			}
+			// leaks internal state if moved to struct method, do copy
+
 			// fmt.Println(notes)
 			fmt.Println("List of notes:")
-			for _, note := range notes {
-				note.Print()
+			for _, note := range storage.List() {
+				// this mixed business logic with presentation, cli must decide
+				fmt.Printf("%d. %s\n", note.ID, note.Text)
 			}
 
 		case "count":
 			// what is d?
-			fmt.Printf("%d note(s) in the list.\n", len(notes))
+			fmt.Printf("%d note(s) in the list.\n", storage.Count())
 
 		case "rename":
 			if len(inputParts) < 3 {
@@ -115,13 +165,12 @@ func main() {
 				continue
 			}
 
-			note, found := findNote(notes, id)
-			if !found {
+			note := storage.Rename(id, strings.Join(inputParts[2:], " "))
+			if note == false {
 				fmt.Println("Note not found.")
 				continue
 			}
 
-			note.Rename(strings.Join(inputParts[2:], " "))
 			fmt.Println("Note renamed successfully.")
 
 		case "show":
@@ -136,8 +185,8 @@ func main() {
 				continue
 			}
 
-			note, found := findNote(notes, id)
-			if !found {
+			note := storage.Find(id)
+			if note == nil {
 				fmt.Println("Note not found.")
 				continue
 			}
@@ -157,16 +206,4 @@ func main() {
 	if err := scanner.Err(); err != nil {
 		fmt.Println("input error:", err)
 	}
-}
-
-// simplify to one return ? without bool?
-func findNote(notes []Note, id int) (*Note, bool) {
-	for index := range notes {
-		if notes[index].ID == id {
-			return &notes[index], true
-		}
-	}
-
-	// nil or &Note{}
-	return nil, false
 }
