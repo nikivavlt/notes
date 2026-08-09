@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -12,35 +13,48 @@ import (
 const appName = "Notes"
 
 type Storage struct {
-	notes []Note
-	nextId int
+	notes  []Note
+	nextID int
 }
 
 func NewStorage() *Storage {
-	return &Storage{ nextId: 1 }
+	return &Storage{nextID: 1}
 }
 
-func (storage *Storage) Add(text string) {
+func (storage *Storage) Add(text string) bool {
 	note := Note{
-		ID:   storage.nextId,
+		ID:   storage.nextID,
 		Text: text,
 	}
 
 	storage.notes = append(storage.notes, note)
-	storage.nextId += 1;
+	storage.nextID += 1
 
-	fmt.Println("Note added successfully.")
+	return true
 }
 
-func (storage *Storage) Find(id int) (*Note) {
+func (storage *Storage) Find(id int) (*Note, int) {
 	for index := range storage.notes {
 		if storage.notes[index].ID == id {
-			return &storage.notes[index]
+			return &storage.notes[index], index
 		}
 	}
 
 	// nil or &Note{}
-	return nil
+	return nil, -1
+}
+
+// split to func (storage *Storage) findIndex(id int) int?
+func (storage *Storage) Remove(id int) bool {
+	_, index := storage.Find(id)
+
+	if index == -1 {
+		return false
+	}
+
+	// One more important detail: slices.Delete returns the new slice, so this reassignment is required:
+	storage.notes = slices.Delete(storage.notes, index, index+1)
+	return true
 }
 
 func (storage *Storage) Count() int {
@@ -55,13 +69,13 @@ func (storage *Storage) List() []Note {
 }
 
 func (storage *Storage) Rename(id int, text string) bool {
-		note := storage.Find(id)
-		if note == nil {
-			return false
-		}
+	note, _ := storage.Find(id)
+	if note == nil {
+		return false
+	}
 
-		note.Rename(text)
-		return true
+	note.Rename(text)
+	return true
 }
 
 type Note struct {
@@ -116,6 +130,7 @@ func main() {
 			fmt.Println("   list")
 			fmt.Println("   count")
 			fmt.Println("   add <text>")
+			fmt.Println("   remove <id>")
 			fmt.Println("   show <id>")
 			fmt.Println("   rename <id> <text>")
 			fmt.Println("   exit")
@@ -134,6 +149,27 @@ func main() {
 			}
 
 			storage.Add(strings.Join(inputParts[1:], " "))
+			fmt.Println("Note added successfully.")
+
+		case "remove":
+			if len(inputParts) != 2 {
+				fmt.Println("Usage: remove <id>")
+				continue
+			}
+
+			id, err := strconv.Atoi(inputParts[1])
+			if err != nil || id <= 0 {
+				fmt.Println("Invalid note ID.")
+				continue
+			}
+
+			removed := storage.Remove(id)
+			if !removed {
+				fmt.Println("Note not found.")
+				continue
+			}
+
+			fmt.Println("Note removed successfully.")
 
 		case "list":
 			if storage.Count() == 0 {
@@ -165,8 +201,9 @@ func main() {
 				continue
 			}
 
-			note := storage.Rename(id, strings.Join(inputParts[2:], " "))
-			if note == false {
+			// to one line condition with var inside if ?
+			renamed := storage.Rename(id, strings.Join(inputParts[2:], " "))
+			if renamed == false {
 				fmt.Println("Note not found.")
 				continue
 			}
@@ -185,13 +222,14 @@ func main() {
 				continue
 			}
 
-			note := storage.Find(id)
+			// why needed, _??
+			note, _ := storage.Find(id)
 			if note == nil {
 				fmt.Println("Note not found.")
 				continue
 			}
 
-			note.Print()
+			fmt.Printf("%d. %s\n", note.ID, note.Text)
 
 		case "exit":
 			fmt.Println("Goodbye!")
