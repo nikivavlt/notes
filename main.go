@@ -21,7 +21,7 @@ func NewStorage() *Storage {
 	return &Storage{nextID: 1}
 }
 
-func (storage *Storage) Add(text string) bool {
+func (storage *Storage) Add(text string) Note {
 	note := Note{
 		ID:   storage.nextID,
 		Text: text,
@@ -30,24 +30,21 @@ func (storage *Storage) Add(text string) bool {
 	storage.notes = append(storage.notes, note)
 	storage.nextID += 1
 
-	return true
+	return note
 }
 
-func (storage *Storage) Find(id int) (*Note, int) {
-	for index := range storage.notes {
-		if storage.notes[index].ID == id {
-			return &storage.notes[index], index
-		}
+func (storage *Storage) Find(id int) (Note, bool) {
+	index := storage.findIndex(id)
+	if index == -1 {
+		return Note{}, false
 	}
 
-	// nil or &Note{}
-	return nil, -1
+	return storage.notes[index], true
 }
 
 // split to func (storage *Storage) findIndex(id int) int?
 func (storage *Storage) Remove(id int) bool {
-	_, index := storage.Find(id)
-
+	index := storage.findIndex(id)
 	if index == -1 {
 		return false
 	}
@@ -68,13 +65,23 @@ func (storage *Storage) List() []Note {
 	return notes
 }
 
+func (storage *Storage) findIndex(id int) int {
+	for i := range storage.notes {
+		if storage.notes[i].ID == id {
+			return i
+		}
+	}
+
+	return -1
+}
+
 func (storage *Storage) Rename(id int, text string) bool {
-	note, _ := storage.Find(id)
-	if note == nil {
+	index := storage.findIndex(id)
+	if index == -1 {
 		return false
 	}
 
-	note.Rename(text)
+	storage.notes[index].Rename(text)
 	return true
 }
 
@@ -91,7 +98,6 @@ func (n *Note) Rename(text string) {
 
 // keep main small
 func main() {
-	// first explain array and why not? arrays length is part of its type
 	storage := NewStorage()
 
 	scanner := bufio.NewScanner(os.Stdin)
@@ -148,8 +154,8 @@ func main() {
 				continue
 			}
 
-			storage.Add(strings.Join(inputParts[1:], " "))
-			fmt.Println("Note added successfully.")
+			note := storage.Add(strings.Join(inputParts[1:], " "))
+			fmt.Printf("Note #%d added successfully.\n", note.ID)
 
 		case "remove":
 			if len(inputParts) != 2 {
@@ -202,8 +208,15 @@ func main() {
 			}
 
 			// to one line condition with var inside if ?
+			// if renamed := storage.Rename(id, text); !renamed {
+			// if !storage.Rename(id, text) {
+			// 	fmt.Println("Note not found.")
+			// 	continue
+			// }
+
 			renamed := storage.Rename(id, strings.Join(inputParts[2:], " "))
-			if renamed == false {
+			// prefer ! instead of == false
+			if !renamed {
 				fmt.Println("Note not found.")
 				continue
 			}
@@ -223,8 +236,8 @@ func main() {
 			}
 
 			// why needed, _??
-			note, _ := storage.Find(id)
-			if note == nil {
+			note, found := storage.Find(id)
+			if found == false {
 				fmt.Println("Note not found.")
 				continue
 			}
