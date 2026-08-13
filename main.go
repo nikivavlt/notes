@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"slices"
@@ -11,6 +12,7 @@ import (
 
 // const appName string = "Notes"
 const appName = "Notes"
+var ErrNoteNotFound = errors.New("note not found") // why not const?
 
 type Storage struct {
 	notes  []Note
@@ -33,25 +35,25 @@ func (storage *Storage) Add(text string) Note {
 	return note
 }
 
-func (storage *Storage) Find(id int) (Note, bool) {
+func (storage *Storage) Find(id int) (Note, error) {
 	index := storage.findIndex(id)
 	if index == -1 {
-		return Note{}, false
+		return Note{}, ErrNoteNotFound
 	}
 
-	return storage.notes[index], true
+	return storage.notes[index], nil
 }
 
 // split to func (storage *Storage) findIndex(id int) int?
-func (storage *Storage) Remove(id int) bool {
+func (storage *Storage) Remove(id int) error {
 	index := storage.findIndex(id)
 	if index == -1 {
-		return false
+		return ErrNoteNotFound
 	}
 
 	// One more important detail: slices.Delete returns the new slice, so this reassignment is required:
 	storage.notes = slices.Delete(storage.notes, index, index+1)
-	return true
+	return nil
 }
 
 func (storage *Storage) Count() int {
@@ -75,14 +77,14 @@ func (storage *Storage) findIndex(id int) int {
 	return -1
 }
 
-func (storage *Storage) Rename(id int, text string) bool {
+func (storage *Storage) Rename(id int, text string) error {
 	index := storage.findIndex(id)
 	if index == -1 {
-		return false
+		return ErrNoteNotFound
 	}
 
 	storage.notes[index].Rename(text)
-	return true
+	return nil
 }
 
 type Note struct {
@@ -169,8 +171,8 @@ func main() {
 				continue
 			}
 
-			removed := storage.Remove(id)
-			if !removed {
+			// The variable err exists only inside that if. in this case
+			if err := storage.Remove(id); err != nil {
 				fmt.Println("Note not found.")
 				continue
 			}
@@ -214,9 +216,7 @@ func main() {
 			// 	continue
 			// }
 
-			renamed := storage.Rename(id, strings.Join(inputParts[2:], " "))
-			// prefer ! instead of == false
-			if !renamed {
+			if err = storage.Rename(id, strings.Join(inputParts[2:], " ")); err != nil {
 				fmt.Println("Note not found.")
 				continue
 			}
@@ -236,8 +236,8 @@ func main() {
 			}
 
 			// why needed, _??
-			note, found := storage.Find(id)
-			if found == false {
+			note, err := storage.Find(id)
+			if err != nil { // use later errors.Is 
 				fmt.Println("Note not found.")
 				continue
 			}
